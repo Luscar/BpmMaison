@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>BpmEngine</id>
+    <version>1.0.0</version>
+    <authors>Votre Organisation</authors>
+    <owners>Votre Organisation</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Moteur de workflow/processus BPM configurable avec support de définitions JSON. Permet aux clients d'implémenter leurs propres repositories pour Oracle ou autres bases de données.</description>
+    <summary>BPM Engine flexible avec handlers pour 6 types d'étapes de workflow</summary>
+    <releaseNotes>Version initiale 1.0.0</releaseNotes>
+    <copyright>Copyright 2024</copyright>
+    <tags>bpm workflow process engine oracle business-process</tags>
+    <dependencies>
+      <group targetFramework="net8.0">
+        <dependency id="System.Text.Json" version="8.0.0" />
+      </group>
+    </dependencies>
+    <contentFiles>
+      <files include="Examples/**/*.json" buildAction="None" copyToOutput="false" />
+    </contentFiles>
+  </metadata>
+  <files>
+    <file src="README.md" target="" />
+    <file src="Examples/**/*.json" target="content/Examples" />
+  </files>
+</package>

@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BPM Engine - Visualiseur de Processus</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .file-input-container {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .file-input-container label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        #fileInput {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #fileInput:hover {
+            border-color: #764ba2;
+            background: #f5f5ff;
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .process-info {
+            padding: 30px;
+            background: #fff9e6;
+            border-left: 4px solid #ffc107;
+            margin: 20px 30px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .process-info.visible {
+            display: block;
+        }
+
+        .process-info h2 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .info-item {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 1.1em;
+            color: #333;
+        }
+
+        .diagram-container {
+            padding: 30px;
+            background: #fafafa;
+            min-height: 400px;
+        }
+
+        .diagram {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            border: 2px solid #e0e0e0;
+            overflow-x: auto;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin: 30px;
+            padding: 25px;
+            background: #f5f5f5;
+            border-radius: 12px;
+        }
+
+        .legend-title {
+            grid-column: 1 / -1;
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+
+        .legend-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .legend-icon {
+            font-size: 1.8em;
+            margin-right: 12px;
+        }
+
+        .legend-content {
+            flex: 1;
+        }
+
+        .legend-text {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 2px;
+        }
+
+        .legend-desc {
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .steps-list {
+            margin: 30px;
+            padding: 25px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .steps-list h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .step-item {
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .step-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .step-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .step-type {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-left: 10px;
+        }
+
+        .step-id {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .error-message {
+            margin: 30px;
+            padding: 20px;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            color: #721c24;
+            display: none;
+        }
+
+        .error-message.visible {
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2em;
+            color: #666;
+            display: none;
+        }
+
+        .loading.visible {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+            }
+            
+            .btn-container {
+                width: 100%;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 Visualiseur de Processus BPM</h1>
+            <p>Chargez un fichier JSON de définition de processus pour visualiser le workflow</p>
+        </div>
+
+        <div class="controls">
+            <div class="file-input-container">
+                <label for="fileInput">📁 Sélectionner un fichier JSON :</label>
+                <input type="file" id="fileInput" accept=".json" />
+            </div>
+            <div class="btn-container">
+                <button class="btn btn-primary" onclick="loadExampleSimple()">
+                    📄 Exemple Simple
+                </button>
+                <button class="btn btn-primary" onclick="loadExampleComplex()">
+                    📊 Exemple Complexe
+                </button>
+                <button class="btn btn-secondary" onclick="exportMermaid()">
+                    💾 Exporter Mermaid
+                </button>
+                <button class="btn btn-success" onclick="exportHTML()">
+                    📥 Télécharger HTML
+                </button>
+            </div>
+        </div>
+
+        <div class="process-info" id="processInfo">
+            <h2>ℹ️ Informations du Processus</h2>
+            <div class="info-grid" id="infoGrid"></div>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+        <div class="loading" id="loading">⏳ Génération du diagramme en cours...</div>
+
+        <div class="diagram-container">
+            <div class="diagram">
+                <div class="mermaid" id="mermaidDiagram">
+                    <!-- Le diagramme sera inséré ici -->
+                    <div style="text-align: center; padding: 60px; color: #999;">
+                        <div style="font-size: 4em; margin-bottom: 20px;">📋</div>
+                        <p style="font-size: 1.2em;">Aucun processus chargé</p>
+                        <p>Sélectionnez un fichier JSON ou chargez un exemple</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-title">🎨 Légende des Types d'Étapes</div>
+            <div class="legend-item">
+                <span class="legend-icon">⚙️</span>
+                <div class="legend-content">
+                    <div class="legend-text">Étape Affaire</div>
+                    <div class="legend-desc">Appel service web</div>
+                </div>
+            </div>
+            <div class="legend-item">
+                <span class="legend-icon">👤</span>
+                <div class="legend-content">
+                    <div class="legend-text">Étape Interactive</div>
+                    <div class="legend-desc">Tâche utilisateur</div>
+                </div>
+            </div>
+            <div class="legend-item">
+                <span class="legend-icon">❓</span>
+                <div class="legend-content">
+                    <div class="legend-text">Étape Décision</div>
+                    <div class="legend-desc">Branchement conditionnel</div>
+                </div>
+            </div>
+            <div class="legend-item">
+                <span class="legend-icon">⏰</span>
+                <div class="legend-content">
+                    <div class="legend-text">Étape Cédulée</div>
+                    <div class="legend-desc">Attente temporisée</div>
+                </div>
+            </div>
+            <div class="legend-item">
+                <span class="legend-icon">📡</span>
+                <div class="legend-content">
+                    <div class="legend-text">Étape Signal</div>
+                    <div class="legend-desc">Attente signal externe</div>
+                </div>
+            </div>
+            <div class="legend-item">
+                <span class="legend-icon">📦</span>
+                <div class="legend-content">
+                    <div class="legend-text">Sous-Processus</div>
+                    <div class="legend-desc">Processus réutilisable</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="steps-list" id="stepsList" style="display: none;">
+            <h3>📝 Liste des Étapes</h3>
+            <div id="stepsContent"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentProcess = null;
+        let currentMermaidCode = '';
+
+        mermaid.initialize({ 
+            startOnLoad: false,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const json = JSON.parse(e.target.result);
+                        loadProcess(json);
+                    } catch (error) {
+                        showError('Erreur de lecture du fichier JSON: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function loadProcess(processDefinition) {
+            currentProcess = processDefinition;
+            hideError();
+            showLoading();
+            
+            setTimeout(() => {
+                try {
+                    displayProcessInfo(processDefinition);
+                    const mermaidCode = generateMermaidDiagram(processDefinition);
+                    currentMermaidCode = mermaidCode;
+                    renderDiagram(mermaidCode);
+                    displayStepsList(processDefinition);
+                    hideLoading();
+                } catch (error) {
+                    hideLoading();
+                    showError('Erreur lors de la génération du diagramme: ' + error.message);
+                }
+            }, 100);
+        }
+
+        function generateMermaidDiagram(def) {
+            let mermaid = 'graph TD\n';
+            mermaid += `    Start([${def.name}])\n`;
+            mermaid += `    Start --> ${def.startStepId}\n\n`;
+
+            const typeMap = {
+                0: 'Business',
+                1: 'Interactive', 
+                2: 'Decision',
+                3: 'Scheduled',
+                4: 'Signal',
+                5: 'SubProcess'
+            };
+
+            const iconMap = {
+                0: '⚙️',
+                1: '👤',
+                2: '❓',
+                3: '⏰',
+                4: '📡',
+                5: '📦'
+            };
+
+            const classMap = {
+                0: 'businessStep',
+                1: 'interactiveStep',
+                2: 'decisionStep',
+                3: 'scheduledStep',
+                4: 'signalStep',
+                5: 'subProcessStep'
+            };
+
+            def.steps.forEach(step => {
+                const icon = iconMap[step.type] || '•';
+                const stepClass = classMap[step.type] || 'defaultStep';
+                
+                let shape;
+                if (step.type === 2) {
+                    shape = `{${icon} ${step.name}}`;
+                } else if (step.type === 1) {
+                    shape = `(${icon} ${step.name})`;
+                } else if (step.type === 3 || step.type === 4) {
+                    shape = `([${icon} ${step.name}])`;
+                } else if (step.type === 5) {
+                    shape = `[[${icon} ${step.name}]]`;
+                } else {
+                    shape = `[${icon} ${step.name}]`;
+                }
+
+                mermaid += `    ${step.id}${shape}\n`;
+                mermaid += `    class ${step.id} ${stepClass}\n`;
+
+                if (step.type === 2 && step.routes) {
+                    step.routes.forEach(route => {
+                        const cond = route.condition.length > 25 
+                            ? route.condition.substring(0, 22) + '...'
+                            : route.condition;
+                        mermaid += `    ${step.id} -->|${cond}| ${route.targetStepId}\n`;
+                    });
+                } else if (step.nextStepId) {
+                    mermaid += `    ${step.id} --> ${step.nextStepId}\n`;
+                } else {
+                    mermaid += `    ${step.id} --> End([Fin])\n`;
+                }
+                
+                mermaid += '\n';
+            });
+
+            mermaid += '    classDef businessStep fill:#e1f5ff,stroke:#01579b,stroke-width:2px\n';
+            mermaid += '    classDef interactiveStep fill:#f3e5f5,stroke:#4a148c,stroke-width:2px\n';
+            mermaid += '    classDef decisionStep fill:#fff9c4,stroke:#f57f17,stroke-width:3px\n';
+            mermaid += '    classDef scheduledStep fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px\n';
+            mermaid += '    classDef signalStep fill:#fce4ec,stroke:#880e4f,stroke-width:2px\n';
+            mermaid += '    classDef subProcessStep fill:#e0f2f1,stroke:#004d40,stroke-width:2px\n';
+
+            return mermaid;
+        }
+
+        function renderDiagram(mermaidCode) {
+            const container = document.getElementById('mermaidDiagram');
+            container.innerHTML = '<div class="mermaid">' + mermaidCode + '</div>';
+            mermaid.init(undefined, container.querySelector('.mermaid'));
+        }
+
+        function displayProcessInfo(def) {
+            const infoGrid = document.getElementById('infoGrid');
+            infoGrid.innerHTML = `
+                <div class="info-item">
+                    <div class="info-label">Nom</div>
+                    <div class="info-value">${def.name}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">ID</div>
+                    <div class="info-value">${def.id}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Version</div>
+                    <div class="info-value">${def.version}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Nombre d'étapes</div>
+                    <div class="info-value">${def.steps.length}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Étape de départ</div>
+                    <div class="info-value">${def.startStepId}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Description</div>
+                    <div class="info-value">${def.description || 'N/A'}</div>
+                </div>
+            `;
+            document.getElementById('processInfo').classList.add('visible');
+        }
+
+        function displayStepsList(def) {
+            const typeNames = {
+                0: 'Business',
+                1: 'Interactive',
+                2: 'Decision',
+                3: 'Scheduled',
+                4: 'Signal',
+                5: 'SubProcess'
+            };
+
+            const stepsContent = document.getElementById('stepsContent');
+            stepsContent.innerHTML = def.steps.map(step => `
+                <div class="step-item">
+                    <div class="step-title">
+                        ${step.name}
+                        <span class="step-type">${typeNames[step.type] || 'Unknown'}</span>
+                    </div>
+                    <div class="step-id">ID: ${step.id}</div>
+                </div>
+            `).join('');
+            
+            document.getElementById('stepsList').style.display = 'block';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = '❌ ' + message;
+            errorDiv.classList.add('visible');
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').classList.remove('visible');
+        }
+
+        function showLoading() {
+            document.getElementById('loading').classList.add('visible');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('visible');
+        }
+
+        function exportMermaid() {
+            if (!currentMermaidCode) {
+                alert('Aucun processus chargé');
+                return;
+            }
+            const blob = new Blob([currentMermaidCode], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (currentProcess?.id || 'process') + '.mermaid';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportHTML() {
+            if (!currentProcess) {
+                alert('Aucun processus chargé');
+                return;
+            }
+
+            const html = document.documentElement.outerHTML;
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (currentProcess?.id || 'process') + '.html';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function loadExampleSimple() {
+            fetch('process-approbation-achat.json')
+                .then(r => r.json())
+                .then(loadProcess)
+                .catch(() => {
+                    const example = {
+                        "id": "exemple-simple",
+                        "name": "Processus d'Approbation Simple",
+                        "description": "Exemple simple de workflow",
+                        "version": 1,
+                        "startStepId": "debut",
+                        "steps": [
+                            {
+                                "id": "debut",
+                                "name": "Soumettre Demande",
+                                "type": 0,
+                                "serviceUrl": "https://api.example.com/submit",
+                                "nextStepId": "verification"
+                            },
+                            {
+                                "id": "verification",
+                                "name": "Vérifier Montant",
+                                "type": 2,
+                                "queryServiceUrl": "https://api.example.com/check",
+                                "routes": [
+                                    {
+                                        "targetStepId": "approuver-auto",
+                                        "condition": "montant < 1000",
+                                        "priority": 1
+                                    },
+                                    {
+                                        "targetStepId": "approuver-manuel",
+                                        "condition": "montant >= 1000",
+                                        "priority": 2
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "approuver-auto",
+                                "name": "Approbation Automatique",
+                                "type": 0,
+                                "serviceUrl": "https://api.example.com/approve",
+                                "nextStepId": null
+                            },
+                            {
+                                "id": "approuver-manuel",
+                                "name": "Approbation Manuelle",
+                                "type": 1,
+                                "taskType": "approbation",
+                                "defaultRole": "manager",
+                                "nextStepId": null
+                            }
+                        ]
+                    };
+                    loadProcess(example);
+                });
+        }
+
+        function loadExampleComplex() {
+            // Chargement de l'exemple complexe (à remplacer par le vrai fichier si disponible)
+            alert('Sélectionnez le fichier process-complexe.json pour voir l\'exemple complexe');
+        }
+    </script>
+</body>
+</html>

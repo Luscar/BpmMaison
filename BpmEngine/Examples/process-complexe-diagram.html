@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion Complète de Commande Client - Visualisation</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 4px solid #667eea;
+        }
+        h1 {
+            color: #333;
+            margin: 0;
+            font-size: 3em;
+        }
+        .info {
+            color: #666;
+            font-size: 1.2em;
+            margin-top: 15px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+        .diagram {
+            background: #fafafa;
+            padding: 40px;
+            border-radius: 12px;
+            border: 2px solid #e0e0e0;
+            margin: 30px 0;
+            overflow-x: auto;
+        }
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .legend-icon {
+            font-size: 2em;
+            margin-right: 15px;
+        }
+        .legend-text {
+            font-weight: 600;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 Gestion Complète de Commande Client</h1>
+            <div class="info">Workflow complet de traitement de commande avec validation, approbation, paiement et livraison</div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value">45</div>
+                <div class="stat-label">Étapes Totales</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">8</div>
+                <div class="stat-label">Points de Décision</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">8</div>
+                <div class="stat-label">Tâches Utilisateur</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">2</div>
+                <div class="stat-label">Sous-Processus</div>
+            </div>
+        </div>
+
+        <div class="diagram">
+            <div class="mermaid">
+graph TD
+    Start([Gestion Complète de Commande Client])
+    Start --> recevoir-commande
+
+    recevoir-commande[⚙️ Réception de la Commande]
+    class recevoir-commande businessStep
+    recevoir-commande --> valider-inventaire
+
+    valider-inventaire{❓ Vérifier Disponibilité Produits}
+    class valider-inventaire decisionStep
+    valider-inventaire -->|disponibilite == 'complet'| produits-disponibles
+    valider-inventaire -->|disponibilite == 'partiel'| disponibilite-partielle
+    valider-inventaire -->|disponibilite == 'aucun'| produits-indisponibles
+
+    produits-disponibles[⚙️ Calculer Prix et Taxes]
+    class produits-disponibles businessStep
+    produits-disponibles --> verifier-montant
+
+    disponibilite-partielle(👤 Contacter Client - Partiel)
+    class disponibilite-partielle interactiveStep
+    disponibilite-partielle --> attendre-reponse-client
+
+    attendre-reponse-client([📡 Attente Réponse (48h)])
+    class attendre-reponse-client signalStep
+    attendre-reponse-client --> traiter-reponse
+
+    traiter-reponse{❓ Traiter Décision Client}
+    class traiter-reponse decisionStep
+    traiter-reponse -->|decision == 'accepter-partiel'| produits-disponibles
+    traiter-reponse -->|decision == 'annuler'| annuler-commande
+    traiter-reponse -->|decision == 'attendre'| attendre-disponibilite
+
+    attendre-disponibilite([📡 Attendre Réapprovisionnement])
+    class attendre-disponibilite signalStep
+    attendre-disponibilite --> produits-disponibles
+
+    produits-indisponibles[⚙️ Notifier Client - Indisponible]
+    class produits-indisponibles businessStep
+    produits-indisponibles --> annuler-commande
+
+    verifier-montant{❓ Vérification du Montant}
+    class verifier-montant decisionStep
+    verifier-montant -->|montantTotal < 500| traiter-directement
+    verifier-montant -->|montantTotal >= 500 && mont...| approbation-superviseur
+    verifier-montant -->|montantTotal >= 5000| approbation-directeur
+
+    traiter-directement[⚙️ Traitement Automatique]
+    class traiter-directement businessStep
+    traiter-directement --> verifier-client
+
+    approbation-superviseur(👤 Approbation Superviseur)
+    class approbation-superviseur interactiveStep
+    approbation-superviseur --> verifier-client
+
+    approbation-directeur(👤 Approbation Directeur)
+    class approbation-directeur interactiveStep
+    approbation-directeur --> validation-finance
+
+    validation-finance(👤 Validation Département Finance)
+    class validation-finance interactiveStep
+    validation-finance --> verifier-client
+
+    verifier-client{❓ Vérification Crédit Client}
+    class verifier-client decisionStep
+    verifier-client -->|creditOk == true| processus-paiement
+    verifier-client -->|creditOk == false| demander-paiement-avance
+
+    demander-paiement-avance[⚙️ Demander Paiement Anticipé]
+    class demander-paiement-avance businessStep
+    demander-paiement-avance --> attendre-paiement-avance
+
+    attendre-paiement-avance([📡 Attente Paiement (7 jours)])
+    class attendre-paiement-avance signalStep
+    attendre-paiement-avance --> processus-paiement
+
+    processus-paiement[[📦 Traitement du Paiement]]
+    class processus-paiement subProcessStep
+    processus-paiement --> verifier-paiement
+
+    verifier-paiement{❓ Vérifier Statut Paiement}
+    class verifier-paiement decisionStep
+    verifier-paiement -->|paiementStatut == 'succes'| preparer-commande
+    verifier-paiement -->|paiementStatut == 'echoue'| gestion-paiement-echoue
+    verifier-paiement -->|paiementStatut == 'pending'| attendre-paiement-pending
+
+    attendre-paiement-pending([⏰ Attendre Confirmation Paiement])
+    class attendre-paiement-pending scheduledStep
+    attendre-paiement-pending --> verifier-paiement
+
+    gestion-paiement-echoue(👤 Gérer Échec de Paiement)
+    class gestion-paiement-echoue interactiveStep
+    gestion-paiement-echoue --> annuler-commande
+
+    preparer-commande[⚙️ Préparation Commande Entrepôt]
+    class preparer-commande businessStep
+    preparer-commande --> assigner-preparation
+
+    assigner-preparation(👤 Assigner Préparateur)
+    class assigner-preparation interactiveStep
+    assigner-preparation --> attendre-preparation
+
+    attendre-preparation([📡 Attendre Fin Préparation])
+    class attendre-preparation signalStep
+    attendre-preparation --> controler-qualite
+
+    controler-qualite(👤 Contrôle Qualité)
+    class controler-qualite interactiveStep
+    controler-qualite --> verifier-qualite
+
+    verifier-qualite{❓ Vérifier Résultat Qualité}
+    class verifier-qualite decisionStep
+    verifier-qualite -->|qualiteOk == true| planifier-livraison
+    verifier-qualite -->|qualiteOk == false && repre...| repreparation
+    verifier-qualite -->|qualiteOk == false && repre...| annuler-commande
+
+    repreparation[⚙️ Repréparation Requise]
+    class repreparation businessStep
+    repreparation --> assigner-preparation
+
+    planifier-livraison[⚙️ Planification Livraison]
+    class planifier-livraison businessStep
+    planifier-livraison --> verifier-mode-livraison
+
+    verifier-mode-livraison{❓ Déterminer Mode Livraison}
+    class verifier-mode-livraison decisionStep
+    verifier-mode-livraison -->|modeLivraison == 'express'| livraison-express
+    verifier-mode-livraison -->|modeLivraison == 'standard'| livraison-standard
+    verifier-mode-livraison -->|modeLivraison == 'economique'| livraison-economique
+
+    livraison-express[[📦 Traitement Livraison Express]]
+    class livraison-express subProcessStep
+    livraison-express --> confirmer-expedition
+
+    livraison-standard[⚙️ Traitement Livraison Standard]
+    class livraison-standard businessStep
+    livraison-standard --> attendre-ramassage
+
+    attendre-ramassage([⏰ Attendre Ramassage Transporteur])
+    class attendre-ramassage scheduledStep
+    attendre-ramassage --> confirmer-expedition
+
+    livraison-economique[⚙️ Traitement Livraison Économique]
+    class livraison-economique businessStep
+    livraison-economique --> attendre-consolidation
+
+    attendre-consolidation([⏰ Attendre Consolidation Envois])
+    class attendre-consolidation scheduledStep
+    attendre-consolidation --> confirmer-expedition
+
+    confirmer-expedition[⚙️ Confirmer Expédition]
+    class confirmer-expedition businessStep
+    confirmer-expedition --> notifier-client-expedition
+
+    notifier-client-expedition[⚙️ Notifier Client de l'Expédition]
+    class notifier-client-expedition businessStep
+    notifier-client-expedition --> attendre-livraison
+
+    attendre-livraison([📡 Attendre Confirmation Livraison])
+    class attendre-livraison signalStep
+    attendre-livraison --> verifier-livraison
+
+    verifier-livraison{❓ Vérifier Statut Livraison}
+    class verifier-livraison decisionStep
+    verifier-livraison -->|livraisonStatut == 'livree'| cloturer-commande
+    verifier-livraison -->|livraisonStatut == 'probleme'| gerer-probleme-livraison
+    verifier-livraison -->|livraisonStatut == 'en-cours'| attendre-livraison
+
+    gerer-probleme-livraison(👤 Gérer Problème de Livraison)
+    class gerer-probleme-livraison interactiveStep
+    gerer-probleme-livraison --> attendre-resolution
+
+    attendre-resolution([📡 Attendre Résolution])
+    class attendre-resolution signalStep
+    attendre-resolution --> cloturer-commande
+
+    cloturer-commande[⚙️ Clôturer la Commande]
+    class cloturer-commande businessStep
+    cloturer-commande --> envoyer-sondage
+
+    envoyer-sondage[⚙️ Envoyer Sondage Satisfaction]
+    class envoyer-sondage businessStep
+    envoyer-sondage --> attendre-sondage
+
+    attendre-sondage([⏰ Attendre Réponse Sondage (7j)])
+    class attendre-sondage scheduledStep
+    attendre-sondage --> archiver-commande
+
+    archiver-commande[⚙️ Archiver la Commande]
+    class archiver-commande businessStep
+    archiver-commande --> End([Fin])
+
+    annuler-commande[⚙️ Annulation de la Commande]
+    class annuler-commande businessStep
+    annuler-commande --> notifier-annulation
+
+    notifier-annulation[⚙️ Notifier Client Annulation]
+    class notifier-annulation businessStep
+    notifier-annulation --> archiver-commande
+
+    classDef businessStep fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef interactiveStep fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef decisionStep fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    classDef scheduledStep fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef signalStep fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef subProcessStep fill:#e0f2f1,stroke:#004d40,stroke-width:2px
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <span class="legend-icon">⚙️</span>
+                <span class="legend-text">Étape Affaire (17)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-icon">👤</span>
+                <span class="legend-text">Étape Interactive (8)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-icon">❓</span>
+                <span class="legend-text">Étape Décision (8)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-icon">⏰</span>
+                <span class="legend-text">Étape Cédulée (4)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-icon">📡</span>
+                <span class="legend-text">Étape Signal (6)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-icon">📦</span>
+                <span class="legend-text">Sous-Processus (2)</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
+</body>
+</html>

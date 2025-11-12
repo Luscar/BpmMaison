@@ -1,0 +1,82 @@
+{
+  "id": "approbation-achat",
+  "name": "Processus d'approbation d'achat",
+  "description": "Processus pour approuver les demandes d'achat",
+  "version": 1,
+  "startStepId": "valider-demande",
+  "steps": [
+    {
+      "id": "valider-demande",
+      "name": "Valider la demande",
+      "type": 0,
+      "serviceUrl": "https://api.client.com/validation/demande",
+      "method": "POST",
+      "parameters": {
+        "typeValidation": "achat"
+      },
+      "nextStepId": "verifier-montant"
+    },
+    {
+      "id": "verifier-montant",
+      "name": "Vérifier le montant",
+      "type": 2,
+      "queryServiceUrl": "https://api.client.com/query/montant",
+      "method": "POST",
+      "routes": [
+        {
+          "targetStepId": "approbation-directe",
+          "condition": "montant < 1000",
+          "priority": 1
+        },
+        {
+          "targetStepId": "approbation-superviseur",
+          "condition": "montant >= 1000",
+          "priority": 2
+        }
+      ]
+    },
+    {
+      "id": "approbation-directe",
+      "name": "Approbation automatique",
+      "type": 0,
+      "serviceUrl": "https://api.client.com/approbation/automatique",
+      "method": "POST",
+      "nextStepId": "notification-finale"
+    },
+    {
+      "id": "approbation-superviseur",
+      "name": "Approbation par superviseur",
+      "type": 1,
+      "taskType": "approbation",
+      "defaultRole": "superviseur",
+      "taskData": {
+        "titre": "Approuver la demande d'achat",
+        "urgence": "normale"
+      },
+      "nextStepId": "attendre-traitement"
+    },
+    {
+      "id": "attendre-traitement",
+      "name": "Attendre 24h",
+      "type": 3,
+      "delayHours": 24,
+      "nextStepId": "verifier-disponibilite"
+    },
+    {
+      "id": "verifier-disponibilite",
+      "name": "Vérifier disponibilité",
+      "type": 4,
+      "signalName": "produit-disponible",
+      "timeoutMinutes": 2880,
+      "nextStepId": "notification-finale"
+    },
+    {
+      "id": "notification-finale",
+      "name": "Envoyer notification",
+      "type": 0,
+      "serviceUrl": "https://api.client.com/notification/envoyer",
+      "method": "POST",
+      "nextStepId": null
+    }
+  ]
+}

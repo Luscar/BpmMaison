@@ -1,0 +1,41 @@
+{
+  "id": "commande-complete",
+  "name": "Processus de commande complète",
+  "description": "Processus avec sous-processus de paiement",
+  "version": 1,
+  "startStepId": "creer-commande",
+  "steps": [
+    {
+      "id": "creer-commande",
+      "name": "Créer la commande",
+      "type": 0,
+      "serviceUrl": "https://api.client.com/commande/creer",
+      "method": "POST",
+      "nextStepId": "processus-paiement"
+    },
+    {
+      "id": "processus-paiement",
+      "name": "Traiter le paiement",
+      "type": 5,
+      "subProcessId": "paiement-securise",
+      "subProcessVersion": 1,
+      "inputMapping": {
+        "montantTotal": "montant",
+        "clientId": "clientId"
+      },
+      "outputMapping": {
+        "transactionId": "paiementTransactionId",
+        "statut": "paiementStatut"
+      },
+      "nextStepId": "confirmer-commande"
+    },
+    {
+      "id": "confirmer-commande",
+      "name": "Confirmer la commande",
+      "type": 0,
+      "serviceUrl": "https://api.client.com/commande/confirmer",
+      "method": "POST",
+      "nextStepId": null
+    }
+  ]
+}

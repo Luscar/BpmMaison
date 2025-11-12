@@ -1,0 +1,540 @@
+{
+  "id": "gestion-commande-complexe",
+  "name": "Gestion Complète de Commande Client",
+  "description": "Workflow complet de traitement de commande avec validation, approbation, paiement et livraison",
+  "version": 1,
+  "startStepId": "recevoir-commande",
+  "steps": [
+    {
+      "id": "recevoir-commande",
+      "name": "Réception de la Commande",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/commande/recevoir",
+      "method": "POST",
+      "parameters": {
+        "source": "web"
+      },
+      "nextStepId": "valider-inventaire"
+    },
+    {
+      "id": "valider-inventaire",
+      "name": "Vérifier Disponibilité Produits",
+      "type": 2,
+      "queryServiceUrl": "https://api.erp.com/inventaire/verifier",
+      "method": "POST",
+      "routes": [
+        {
+          "targetStepId": "produits-disponibles",
+          "condition": "disponibilite == 'complet'",
+          "priority": 1
+        },
+        {
+          "targetStepId": "disponibilite-partielle",
+          "condition": "disponibilite == 'partiel'",
+          "priority": 2
+        },
+        {
+          "targetStepId": "produits-indisponibles",
+          "condition": "disponibilite == 'aucun'",
+          "priority": 3
+        }
+      ]
+    },
+    {
+      "id": "produits-disponibles",
+      "name": "Calculer Prix et Taxes",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/commande/calculer-prix",
+      "method": "POST",
+      "nextStepId": "verifier-montant"
+    },
+    {
+      "id": "disponibilite-partielle",
+      "name": "Contacter Client - Partiel",
+      "type": 1,
+      "taskType": "contact-client",
+      "defaultRole": "service-client",
+      "taskData": {
+        "type": "disponibilite-partielle",
+        "urgence": "moyenne"
+      },
+      "nextStepId": "attendre-reponse-client"
+    },
+    {
+      "id": "attendre-reponse-client",
+      "name": "Attente Réponse (48h)",
+      "type": 4,
+      "signalName": "reponse-client",
+      "timeoutMinutes": 2880,
+      "nextStepId": "traiter-reponse"
+    },
+    {
+      "id": "traiter-reponse",
+      "name": "Traiter Décision Client",
+      "type": 2,
+      "queryServiceUrl": "https://api.erp.com/client/decision",
+      "method": "GET",
+      "routes": [
+        {
+          "targetStepId": "produits-disponibles",
+          "condition": "decision == 'accepter-partiel'",
+          "priority": 1
+        },
+        {
+          "targetStepId": "annuler-commande",
+          "condition": "decision == 'annuler'",
+          "priority": 2
+        },
+        {
+          "targetStepId": "attendre-disponibilite",
+          "condition": "decision == 'attendre'",
+          "priority": 3
+        }
+      ]
+    },
+    {
+      "id": "attendre-disponibilite",
+      "name": "Attendre Réapprovisionnement",
+      "type": 4,
+      "signalName": "produits-disponibles",
+      "timeoutMinutes": 10080,
+      "nextStepId": "produits-disponibles"
+    },
+    {
+      "id": "produits-indisponibles",
+      "name": "Notifier Client - Indisponible",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/notification/indisponible",
+      "method": "POST",
+      "nextStepId": "annuler-commande"
+    },
+    {
+      "id": "verifier-montant",
+      "name": "Vérification du Montant",
+      "type": 2,
+      "queryServiceUrl": "https://api.erp.com/commande/categorie-montant",
+      "method": "POST",
+      "routes": [
+        {
+          "targetStepId": "traiter-directement",
+          "condition": "montantTotal < 500",
+          "priority": 1
+        },
+        {
+          "targetStepId": "approbation-superviseur",
+          "condition": "montantTotal >= 500 && montantTotal < 5000",
+          "priority": 2
+        },
+        {
+          "targetStepId": "approbation-directeur",
+          "condition": "montantTotal >= 5000",
+          "priority": 3
+        }
+      ]
+    },
+    {
+      "id": "traiter-directement",
+      "name": "Traitement Automatique",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/commande/auto-approuver",
+      "method": "POST",
+      "nextStepId": "verifier-client"
+    },
+    {
+      "id": "approbation-superviseur",
+      "name": "Approbation Superviseur",
+      "type": 1,
+      "taskType": "approbation",
+      "defaultRole": "superviseur",
+      "taskData": {
+        "niveau": "superviseur",
+        "urgence": "normale"
+      },
+      "nextStepId": "verifier-client"
+    },
+    {
+      "id": "approbation-directeur",
+      "name": "Approbation Directeur",
+      "type": 1,
+      "taskType": "approbation",
+      "defaultRole": "directeur",
+      "taskData": {
+        "niveau": "directeur",
+        "urgence": "haute"
+      },
+      "nextStepId": "validation-finance"
+    },
+    {
+      "id": "validation-finance",
+      "name": "Validation Département Finance",
+      "type": 1,
+      "taskType": "validation-finance",
+      "defaultRole": "finance",
+      "taskData": {
+        "type": "commande-elevee",
+        "verification": "complete"
+      },
+      "nextStepId": "verifier-client"
+    },
+    {
+      "id": "verifier-client",
+      "name": "Vérification Crédit Client",
+      "type": 2,
+      "queryServiceUrl": "https://api.erp.com/client/credit-check",
+      "method": "POST",
+      "routes": [
+        {
+          "targetStepId": "processus-paiement",
+          "condition": "creditOk == true",
+          "priority": 1
+        },
+        {
+          "targetStepId": "demander-paiement-avance",
+          "condition": "creditOk == false",
+          "priority": 2
+        }
+      ]
+    },
+    {
+      "id": "demander-paiement-avance",
+      "name": "Demander Paiement Anticipé",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/paiement/demander-avance",
+      "method": "POST",
+      "nextStepId": "attendre-paiement-avance"
+    },
+    {
+      "id": "attendre-paiement-avance",
+      "name": "Attente Paiement (7 jours)",
+      "type": 4,
+      "signalName": "paiement-recu",
+      "timeoutMinutes": 10080,
+      "nextStepId": "processus-paiement"
+    },
+    {
+      "id": "processus-paiement",
+      "name": "Traitement du Paiement",
+      "type": 5,
+      "subProcessId": "paiement-securise",
+      "subProcessVersion": 1,
+      "inputMapping": {
+        "montantTotal": "montant",
+        "clientId": "clientId",
+        "commandeId": "commandeId"
+      },
+      "outputMapping": {
+        "transactionId": "paiementTransactionId",
+        "statut": "paiementStatut",
+        "dateTransaction": "paiementDate"
+      },
+      "nextStepId": "verifier-paiement"
+    },
+    {
+      "id": "verifier-paiement",
+      "name": "Vérifier Statut Paiement",
+      "type": 2,
+      "queryServiceUrl": "https://api.erp.com/paiement/statut",
+      "method": "GET",
+      "routes": [
+        {
+          "targetStepId": "preparer-commande",
+          "condition": "paiementStatut == 'succes'",
+          "priority": 1
+        },
+        {
+          "targetStepId": "gestion-paiement-echoue",
+          "condition": "paiementStatut == 'echoue'",
+          "priority": 2
+        },
+        {
+          "targetStepId": "attendre-paiement-pending",
+          "condition": "paiementStatut == 'pending'",
+          "priority": 3
+        }
+      ]
+    },
+    {
+      "id": "attendre-paiement-pending",
+      "name": "Attendre Confirmation Paiement",
+      "type": 3,
+      "delayHours": 2,
+      "nextStepId": "verifier-paiement"
+    },
+    {
+      "id": "gestion-paiement-echoue",
+      "name": "Gérer Échec de Paiement",
+      "type": 1,
+      "taskType": "gestion-echec",
+      "defaultRole": "comptabilite",
+      "taskData": {
+        "type": "paiement-echoue",
+        "action": "contacter-client"
+      },
+      "nextStepId": "annuler-commande"
+    },
+    {
+      "id": "preparer-commande",
+      "name": "Préparation Commande Entrepôt",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/entrepot/preparer",
+      "method": "POST",
+      "nextStepId": "assigner-preparation"
+    },
+    {
+      "id": "assigner-preparation",
+      "name": "Assigner Préparateur",
+      "type": 1,
+      "taskType": "preparation-commande",
+      "defaultRole": "preparateur",
+      "taskData": {
+        "zone": "entrepot-principal",
+        "priorite": "normale"
+      },
+      "nextStepId": "attendre-preparation"
+    },
+    {
+      "id": "attendre-preparation",
+      "name": "Attendre Fin Préparation",
+      "type": 4,
+      "signalName": "preparation-terminee",
+      "timeoutMinutes": 1440,
+      "nextStepId": "controler-qualite"
+    },
+    {
+      "id": "controler-qualite",
+      "name": "Contrôle Qualité",
+      "type": 1,
+      "taskType": "controle-qualite",
+      "defaultRole": "controleur-qualite",
+      "taskData": {
+        "type": "controle-standard",
+        "checklist": "complete"
+      },
+      "nextStepId": "verifier-qualite"
+    },
+    {
+      "id": "verifier-qualite",
+      "name": "Vérifier Résultat Qualité",
+      "type": 2,
+      "queryServiceUrl": "https://api.erp.com/qualite/resultat",
+      "method": "GET",
+      "routes": [
+        {
+          "targetStepId": "planifier-livraison",
+          "condition": "qualiteOk == true",
+          "priority": 1
+        },
+        {
+          "targetStepId": "repreparation",
+          "condition": "qualiteOk == false && repreparable == true",
+          "priority": 2
+        },
+        {
+          "targetStepId": "annuler-commande",
+          "condition": "qualiteOk == false && repreparable == false",
+          "priority": 3
+        }
+      ]
+    },
+    {
+      "id": "repreparation",
+      "name": "Repréparation Requise",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/entrepot/repreparation",
+      "method": "POST",
+      "nextStepId": "assigner-preparation"
+    },
+    {
+      "id": "planifier-livraison",
+      "name": "Planification Livraison",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/livraison/planifier",
+      "method": "POST",
+      "nextStepId": "verifier-mode-livraison"
+    },
+    {
+      "id": "verifier-mode-livraison",
+      "name": "Déterminer Mode Livraison",
+      "type": 2,
+      "queryServiceUrl": "https://api.erp.com/livraison/mode",
+      "method": "POST",
+      "routes": [
+        {
+          "targetStepId": "livraison-express",
+          "condition": "modeLivraison == 'express'",
+          "priority": 1
+        },
+        {
+          "targetStepId": "livraison-standard",
+          "condition": "modeLivraison == 'standard'",
+          "priority": 2
+        },
+        {
+          "targetStepId": "livraison-economique",
+          "condition": "modeLivraison == 'economique'",
+          "priority": 3
+        }
+      ]
+    },
+    {
+      "id": "livraison-express",
+      "name": "Traitement Livraison Express",
+      "type": 5,
+      "subProcessId": "livraison-express-process",
+      "subProcessVersion": 1,
+      "inputMapping": {
+        "commandeId": "commandeId",
+        "adresse": "adresseLivraison"
+      },
+      "outputMapping": {
+        "trackingId": "numeroSuivi"
+      },
+      "nextStepId": "confirmer-expedition"
+    },
+    {
+      "id": "livraison-standard",
+      "name": "Traitement Livraison Standard",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/livraison/standard/organiser",
+      "method": "POST",
+      "nextStepId": "attendre-ramassage"
+    },
+    {
+      "id": "attendre-ramassage",
+      "name": "Attendre Ramassage Transporteur",
+      "type": 3,
+      "delayHours": 24,
+      "nextStepId": "confirmer-expedition"
+    },
+    {
+      "id": "livraison-economique",
+      "name": "Traitement Livraison Économique",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/livraison/economique/organiser",
+      "method": "POST",
+      "nextStepId": "attendre-consolidation"
+    },
+    {
+      "id": "attendre-consolidation",
+      "name": "Attendre Consolidation Envois",
+      "type": 3,
+      "delayDays": 3,
+      "nextStepId": "confirmer-expedition"
+    },
+    {
+      "id": "confirmer-expedition",
+      "name": "Confirmer Expédition",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/commande/confirmer-expedition",
+      "method": "POST",
+      "nextStepId": "notifier-client-expedition"
+    },
+    {
+      "id": "notifier-client-expedition",
+      "name": "Notifier Client de l'Expédition",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/notification/expedition",
+      "method": "POST",
+      "nextStepId": "attendre-livraison"
+    },
+    {
+      "id": "attendre-livraison",
+      "name": "Attendre Confirmation Livraison",
+      "type": 4,
+      "signalName": "livraison-confirmee",
+      "timeoutMinutes": 20160,
+      "nextStepId": "verifier-livraison"
+    },
+    {
+      "id": "verifier-livraison",
+      "name": "Vérifier Statut Livraison",
+      "type": 2,
+      "queryServiceUrl": "https://api.erp.com/livraison/statut",
+      "method": "GET",
+      "routes": [
+        {
+          "targetStepId": "cloturer-commande",
+          "condition": "livraisonStatut == 'livree'",
+          "priority": 1
+        },
+        {
+          "targetStepId": "gerer-probleme-livraison",
+          "condition": "livraisonStatut == 'probleme'",
+          "priority": 2
+        },
+        {
+          "targetStepId": "attendre-livraison",
+          "condition": "livraisonStatut == 'en-cours'",
+          "priority": 3
+        }
+      ]
+    },
+    {
+      "id": "gerer-probleme-livraison",
+      "name": "Gérer Problème de Livraison",
+      "type": 1,
+      "taskType": "probleme-livraison",
+      "defaultRole": "service-client",
+      "taskData": {
+        "urgence": "haute",
+        "type": "incident-livraison"
+      },
+      "nextStepId": "attendre-resolution"
+    },
+    {
+      "id": "attendre-resolution",
+      "name": "Attendre Résolution",
+      "type": 4,
+      "signalName": "probleme-resolu",
+      "timeoutMinutes": 4320,
+      "nextStepId": "cloturer-commande"
+    },
+    {
+      "id": "cloturer-commande",
+      "name": "Clôturer la Commande",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/commande/cloturer",
+      "method": "POST",
+      "nextStepId": "envoyer-sondage"
+    },
+    {
+      "id": "envoyer-sondage",
+      "name": "Envoyer Sondage Satisfaction",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/satisfaction/envoyer-sondage",
+      "method": "POST",
+      "nextStepId": "attendre-sondage"
+    },
+    {
+      "id": "attendre-sondage",
+      "name": "Attendre Réponse Sondage (7j)",
+      "type": 3,
+      "delayDays": 7,
+      "nextStepId": "archiver-commande"
+    },
+    {
+      "id": "archiver-commande",
+      "name": "Archiver la Commande",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/commande/archiver",
+      "method": "POST",
+      "nextStepId": null
+    },
+    {
+      "id": "annuler-commande",
+      "name": "Annulation de la Commande",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/commande/annuler",
+      "method": "POST",
+      "nextStepId": "notifier-annulation"
+    },
+    {
+      "id": "notifier-annulation",
+      "name": "Notifier Client Annulation",
+      "type": 0,
+      "serviceUrl": "https://api.erp.com/notification/annulation",
+      "method": "POST",
+      "nextStepId": "archiver-commande"
+    }
+  ]
+}
