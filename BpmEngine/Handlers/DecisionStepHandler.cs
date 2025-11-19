@@ -6,17 +6,30 @@ namespace BpmEngine.Handlers;
 
 public class DecisionStepHandler : IStepHandler
 {
-    private readonly IWebServiceClient _webServiceClient;
+    private readonly IQueryHandler _queryHandler;
     private readonly IConditionEvaluator _conditionEvaluator;
+    private readonly IWebServiceClient? _webServiceClient; // Legacy support
 
     public StepType SupportedType => StepType.Decision;
 
+    public DecisionStepHandler(
+        IQueryHandler queryHandler,
+        IConditionEvaluator conditionEvaluator)
+    {
+        _queryHandler = queryHandler;
+        _conditionEvaluator = conditionEvaluator;
+        _webServiceClient = null;
+    }
+
+    // Legacy constructor for backward compatibility
+    [Obsolete("Use constructor with IQueryHandler instead")]
     public DecisionStepHandler(
         IWebServiceClient webServiceClient,
         IConditionEvaluator conditionEvaluator)
     {
         _webServiceClient = webServiceClient;
         _conditionEvaluator = conditionEvaluator;
+        _queryHandler = null!;
     }
 
     public async Task<StepExecutionResult> ExecuteAsync(
@@ -30,11 +43,36 @@ public class DecisionStepHandler : IStepHandler
         try
         {
             var parameters = MergeParameters(decisionStep.Parameters, processInstance.Variables);
-            
-            var queryResult = await _webServiceClient.CallAsync(
-                decisionStep.QueryServiceUrl,
-                decisionStep.Method,
-                parameters);
+
+            Dictionary<string, object> queryResult;
+
+            // Use new CQRS pattern if QueryName is provided
+            if (!string.IsNullOrEmpty(decisionStep.QueryName))
+            {
+                if (_queryHandler == null)
+                    throw new InvalidOperationException("IQueryHandler not configured. Please use the new constructor with IQueryHandler.");
+
+                queryResult = await _queryHandler.ExecuteAsync(
+                    decisionStep.QueryName,
+                    parameters);
+            }
+            // Legacy support for QueryServiceUrl
+            else if (!string.IsNullOrEmpty(decisionStep.QueryServiceUrl))
+            {
+                if (_webServiceClient == null)
+                    throw new InvalidOperationException("IWebServiceClient not configured. Please migrate to IQueryHandler or use the legacy constructor.");
+
+#pragma warning disable CS0618 // Type or member is obsolete
+                queryResult = await _webServiceClient.CallAsync(
+                    decisionStep.QueryServiceUrl,
+                    decisionStep.Method,
+                    parameters);
+#pragma warning restore CS0618 // Type or member is obsolete
+            }
+            else
+            {
+                throw new InvalidOperationException("Either QueryName or QueryServiceUrl must be specified in DecisionStepDefinition.");
+            }
 
             var context = new Dictionary<string, object>(processInstance.Variables);
             foreach (var item in queryResult)
