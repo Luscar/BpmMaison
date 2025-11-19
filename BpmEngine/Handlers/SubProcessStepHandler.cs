@@ -27,7 +27,7 @@ public class SubProcessStepHandler : IStepHandler
         var subProcessStep = (SubProcessStepDefinition)stepDefinition;
         var result = new StepExecutionResult();
 
-        if (stepInstance.Status == StepStatus.NotStarted || stepInstance.Status == StepStatus.Running)
+        if (stepInstance.Status == StepStatus.NotStarted)
         {
             var subProcessDefinition = await _processDefinitionRepository.GetByIdAsync(
                 subProcessStep.SubProcessId,
@@ -63,7 +63,7 @@ public class SubProcessStepHandler : IStepHandler
             result.RequiresWait = true;
             result.IsCompleted = false;
         }
-        else if (stepInstance.Status == StepStatus.Running || stepInstance.Status == StepStatus.Waiting)
+        else if (stepInstance.Status == StepStatus.Running)
         {
             if (!stepInstance.OutputData.TryGetValue("SubProcessInstanceId", out var subProcessIdObj))
             {
