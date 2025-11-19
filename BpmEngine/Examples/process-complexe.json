@@ -9,8 +9,7 @@
       "id": "recevoir-commande",
       "name": "Réception de la Commande",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/commande/recevoir",
-      "method": "POST",
+      "commandName": "ReceiveOrder",
       "parameters": {
         "source": "web"
       },
@@ -20,8 +19,7 @@
       "id": "valider-inventaire",
       "name": "Vérifier Disponibilité Produits",
       "type": 2,
-      "queryServiceUrl": "https://api.erp.com/inventaire/verifier",
-      "method": "POST",
+      "queryName": "CheckInventoryAvailability",
       "routes": [
         {
           "targetStepId": "produits-disponibles",
@@ -44,8 +42,7 @@
       "id": "produits-disponibles",
       "name": "Calculer Prix et Taxes",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/commande/calculer-prix",
-      "method": "POST",
+      "commandName": "CalculatePriceAndTaxes",
       "nextStepId": "verifier-montant"
     },
     {
@@ -72,8 +69,7 @@
       "id": "traiter-reponse",
       "name": "Traiter Décision Client",
       "type": 2,
-      "queryServiceUrl": "https://api.erp.com/client/decision",
-      "method": "GET",
+      "queryName": "GetClientDecision",
       "routes": [
         {
           "targetStepId": "produits-disponibles",
@@ -104,16 +100,14 @@
       "id": "produits-indisponibles",
       "name": "Notifier Client - Indisponible",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/notification/indisponible",
-      "method": "POST",
+      "commandName": "NotifyProductUnavailable",
       "nextStepId": "annuler-commande"
     },
     {
       "id": "verifier-montant",
       "name": "Vérification du Montant",
       "type": 2,
-      "queryServiceUrl": "https://api.erp.com/commande/categorie-montant",
-      "method": "POST",
+      "queryName": "GetOrderAmountCategory",
       "routes": [
         {
           "targetStepId": "traiter-directement",
@@ -136,8 +130,7 @@
       "id": "traiter-directement",
       "name": "Traitement Automatique",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/commande/auto-approuver",
-      "method": "POST",
+      "commandName": "AutoApproveOrder",
       "nextStepId": "verifier-client"
     },
     {
@@ -180,8 +173,7 @@
       "id": "verifier-client",
       "name": "Vérification Crédit Client",
       "type": 2,
-      "queryServiceUrl": "https://api.erp.com/client/credit-check",
-      "method": "POST",
+      "queryName": "CheckClientCredit",
       "routes": [
         {
           "targetStepId": "processus-paiement",
@@ -199,8 +191,7 @@
       "id": "demander-paiement-avance",
       "name": "Demander Paiement Anticipé",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/paiement/demander-avance",
-      "method": "POST",
+      "commandName": "RequestAdvancePayment",
       "nextStepId": "attendre-paiement-avance"
     },
     {
@@ -233,8 +224,7 @@
       "id": "verifier-paiement",
       "name": "Vérifier Statut Paiement",
       "type": 2,
-      "queryServiceUrl": "https://api.erp.com/paiement/statut",
-      "method": "GET",
+      "queryName": "GetPaymentStatus",
       "routes": [
         {
           "targetStepId": "preparer-commande",
@@ -276,8 +266,7 @@
       "id": "preparer-commande",
       "name": "Préparation Commande Entrepôt",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/entrepot/preparer",
-      "method": "POST",
+      "commandName": "PrepareWarehouseOrder",
       "nextStepId": "assigner-preparation"
     },
     {
@@ -316,8 +305,7 @@
       "id": "verifier-qualite",
       "name": "Vérifier Résultat Qualité",
       "type": 2,
-      "queryServiceUrl": "https://api.erp.com/qualite/resultat",
-      "method": "GET",
+      "queryName": "GetQualityCheckResult",
       "routes": [
         {
           "targetStepId": "planifier-livraison",
@@ -340,24 +328,21 @@
       "id": "repreparation",
       "name": "Repréparation Requise",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/entrepot/repreparation",
-      "method": "POST",
+      "commandName": "RequestRepreparation",
       "nextStepId": "assigner-preparation"
     },
     {
       "id": "planifier-livraison",
       "name": "Planification Livraison",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/livraison/planifier",
-      "method": "POST",
+      "commandName": "PlanDelivery",
       "nextStepId": "verifier-mode-livraison"
     },
     {
       "id": "verifier-mode-livraison",
       "name": "Déterminer Mode Livraison",
       "type": 2,
-      "queryServiceUrl": "https://api.erp.com/livraison/mode",
-      "method": "POST",
+      "queryName": "GetDeliveryMode",
       "routes": [
         {
           "targetStepId": "livraison-express",
@@ -395,8 +380,7 @@
       "id": "livraison-standard",
       "name": "Traitement Livraison Standard",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/livraison/standard/organiser",
-      "method": "POST",
+      "commandName": "OrganizeStandardDelivery",
       "nextStepId": "attendre-ramassage"
     },
     {
@@ -410,8 +394,7 @@
       "id": "livraison-economique",
       "name": "Traitement Livraison Économique",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/livraison/economique/organiser",
-      "method": "POST",
+      "commandName": "OrganizeEconomicDelivery",
       "nextStepId": "attendre-consolidation"
     },
     {
@@ -425,16 +408,14 @@
       "id": "confirmer-expedition",
       "name": "Confirmer Expédition",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/commande/confirmer-expedition",
-      "method": "POST",
+      "commandName": "ConfirmShipment",
       "nextStepId": "notifier-client-expedition"
     },
     {
       "id": "notifier-client-expedition",
       "name": "Notifier Client de l'Expédition",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/notification/expedition",
-      "method": "POST",
+      "commandName": "NotifyClientShipment",
       "nextStepId": "attendre-livraison"
     },
     {
@@ -449,8 +430,7 @@
       "id": "verifier-livraison",
       "name": "Vérifier Statut Livraison",
       "type": 2,
-      "queryServiceUrl": "https://api.erp.com/livraison/statut",
-      "method": "GET",
+      "queryName": "GetDeliveryStatus",
       "routes": [
         {
           "targetStepId": "cloturer-commande",
@@ -493,16 +473,14 @@
       "id": "cloturer-commande",
       "name": "Clôturer la Commande",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/commande/cloturer",
-      "method": "POST",
+      "commandName": "CloseOrder",
       "nextStepId": "envoyer-sondage"
     },
     {
       "id": "envoyer-sondage",
       "name": "Envoyer Sondage Satisfaction",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/satisfaction/envoyer-sondage",
-      "method": "POST",
+      "commandName": "SendSatisfactionSurvey",
       "nextStepId": "attendre-sondage"
     },
     {
@@ -516,24 +494,21 @@
       "id": "archiver-commande",
       "name": "Archiver la Commande",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/commande/archiver",
-      "method": "POST",
+      "commandName": "ArchiveOrder",
       "nextStepId": null
     },
     {
       "id": "annuler-commande",
       "name": "Annulation de la Commande",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/commande/annuler",
-      "method": "POST",
+      "commandName": "CancelOrder",
       "nextStepId": "notifier-annulation"
     },
     {
       "id": "notifier-annulation",
       "name": "Notifier Client Annulation",
       "type": 0,
-      "serviceUrl": "https://api.erp.com/notification/annulation",
-      "method": "POST",
+      "commandName": "NotifyCancellation",
       "nextStepId": "archiver-commande"
     }
   ]

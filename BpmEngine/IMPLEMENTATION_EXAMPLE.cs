@@ -202,9 +202,181 @@ public class OracleTaskRepository : ITaskRepository
 }
 
 // ----------------------------------------------------------------------------
-// 2. IMPLÉMENTATION DES SERVICES
+// 2. IMPLÉMENTATION DES SERVICES (CQRS PATTERN - RECOMMENDED)
 // ----------------------------------------------------------------------------
 
+/// <summary>
+/// Command handler implementation - handles write operations
+/// Client implements specific commands based on their business logic
+/// </summary>
+public class ApplicationCommandHandler : ICommandHandler
+{
+    private readonly HttpClient _httpClient;
+    // Add your dependencies: DbContext, repositories, etc.
+
+    public ApplicationCommandHandler(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+
+    public async Task<Dictionary<string, object>> ExecuteAsync(
+        string commandName,
+        Dictionary<string, object>? parameters = null)
+    {
+        // Route to appropriate command handler based on commandName
+        return commandName switch
+        {
+            "ValidateOrderRequest" => await ValidateOrderRequest(parameters),
+            "ApproveOrderAutomatically" => await ApproveOrderAutomatically(parameters),
+            "SendNotification" => await SendNotification(parameters),
+            "ReceiveOrder" => await ReceiveOrder(parameters),
+            "UpdateInventory" => await UpdateInventory(parameters),
+            "CreateInvoice" => await CreateInvoice(parameters),
+            _ => throw new NotImplementedException($"Command '{commandName}' is not implemented")
+        };
+    }
+
+    private async Task<Dictionary<string, object>> ValidateOrderRequest(Dictionary<string, object>? parameters)
+    {
+        // TODO: Implement business logic
+        // - Validate order data
+        // - Check business rules
+        // - Return validation result
+        return new Dictionary<string, object>
+        {
+            ["isValid"] = true,
+            ["validationDate"] = DateTime.UtcNow
+        };
+    }
+
+    private async Task<Dictionary<string, object>> ApproveOrderAutomatically(Dictionary<string, object>? parameters)
+    {
+        // TODO: Implement auto-approval logic
+        return new Dictionary<string, object>
+        {
+            ["approved"] = true,
+            ["approvalDate"] = DateTime.UtcNow
+        };
+    }
+
+    private async Task<Dictionary<string, object>> SendNotification(Dictionary<string, object>? parameters)
+    {
+        // TODO: Send notification via email/SMS
+        return new Dictionary<string, object>
+        {
+            ["sent"] = true,
+            ["timestamp"] = DateTime.UtcNow
+        };
+    }
+
+    private async Task<Dictionary<string, object>> ReceiveOrder(Dictionary<string, object>? parameters)
+    {
+        // TODO: Implement order reception logic
+        return new Dictionary<string, object>
+        {
+            ["received"] = true,
+            ["orderId"] = Guid.NewGuid().ToString()
+        };
+    }
+
+    private async Task<Dictionary<string, object>> UpdateInventory(Dictionary<string, object>? parameters)
+    {
+        // TODO: Update inventory levels
+        return new Dictionary<string, object>
+        {
+            ["updated"] = true,
+            ["newQuantity"] = 100
+        };
+    }
+
+    private async Task<Dictionary<string, object>> CreateInvoice(Dictionary<string, object>? parameters)
+    {
+        // TODO: Create invoice
+        return new Dictionary<string, object>
+        {
+            ["invoiceId"] = Guid.NewGuid().ToString(),
+            ["created"] = true
+        };
+    }
+}
+
+/// <summary>
+/// Query handler implementation - handles read operations
+/// Client implements specific queries based on their business logic
+/// </summary>
+public class ApplicationQueryHandler : IQueryHandler
+{
+    private readonly HttpClient _httpClient;
+    // Add your dependencies: DbContext, repositories, etc.
+
+    public ApplicationQueryHandler(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+
+    public async Task<Dictionary<string, object>> ExecuteAsync(
+        string queryName,
+        Dictionary<string, object>? parameters = null)
+    {
+        // Route to appropriate query handler based on queryName
+        return queryName switch
+        {
+            "GetOrderAmount" => await GetOrderAmount(parameters),
+            "CheckInventoryAvailability" => await CheckInventoryAvailability(parameters),
+            "GetProductStatus" => await GetProductStatus(parameters),
+            "CheckProductAvailability" => await CheckProductAvailability(parameters),
+            _ => throw new NotImplementedException($"Query '{queryName}' is not implemented")
+        };
+    }
+
+    private async Task<Dictionary<string, object>> GetOrderAmount(Dictionary<string, object>? parameters)
+    {
+        // TODO: Query order amount from database or service
+        // This is a read-only operation
+        return new Dictionary<string, object>
+        {
+            ["montant"] = 1500.00,
+            ["currency"] = "EUR"
+        };
+    }
+
+    private async Task<Dictionary<string, object>> CheckInventoryAvailability(Dictionary<string, object>? parameters)
+    {
+        // TODO: Check inventory levels
+        return new Dictionary<string, object>
+        {
+            ["available"] = true,
+            ["quantity"] = 50,
+            ["stockLevel"] = "sufficient"
+        };
+    }
+
+    private async Task<Dictionary<string, object>> GetProductStatus(Dictionary<string, object>? parameters)
+    {
+        // TODO: Get product status
+        return new Dictionary<string, object>
+        {
+            ["status"] = "available",
+            ["price"] = 99.99
+        };
+    }
+
+    private async Task<Dictionary<string, object>> CheckProductAvailability(Dictionary<string, object>? parameters)
+    {
+        // TODO: Check if product is available
+        return new Dictionary<string, object>
+        {
+            ["available"] = true,
+            ["deliveryDays"] = 3
+        };
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 2b. LEGACY IMPLEMENTATION (DEPRECATED - For backward compatibility only)
+// ----------------------------------------------------------------------------
+
+[Obsolete("Use ApplicationCommandHandler and ApplicationQueryHandler instead")]
 public class HttpWebServiceClient : IWebServiceClient
 {
     private readonly HttpClient _httpClient;
@@ -215,8 +387,8 @@ public class HttpWebServiceClient : IWebServiceClient
     }
 
     public async Task<Dictionary<string, object>> CallAsync(
-        string url, 
-        string method, 
+        string url,
+        string method,
         Dictionary<string, object>? parameters = null)
     {
         // TODO: Implémentation réelle avec HttpClient
@@ -275,11 +447,15 @@ public class CustomTaskService : ITaskService
 }
 
 // ----------------------------------------------------------------------------
-// 3. CONFIGURATION ET INITIALISATION
+// 3. CONFIGURATION ET INITIALISATION (CQRS PATTERN - RECOMMENDED)
 // ----------------------------------------------------------------------------
 
 public class BpmEngineSetup
 {
+    /// <summary>
+    /// Creates engine with CQRS pattern (recommended)
+    /// Uses ICommandHandler and IQueryHandler for business and decision steps
+    /// </summary>
     public static ProcessEngine CreateEngine(string connectionString)
     {
         // Repositories
@@ -288,13 +464,53 @@ public class BpmEngineSetup
         var stepInstRepo = new OracleStepInstanceRepository(connectionString);
         var taskRepo = new OracleTaskRepository(connectionString);
 
-        // Services
+        // Services - CQRS pattern
         var httpClient = new HttpClient();
+        var commandHandler = new ApplicationCommandHandler(httpClient);
+        var queryHandler = new ApplicationQueryHandler(httpClient);
+        var taskService = new CustomTaskService(taskRepo);
+        var conditionEvaluator = new SimpleConditionEvaluator();
+
+        // Handlers - using CQRS pattern
+        var handlers = new IStepHandler[]
+        {
+            new BusinessStepHandler(commandHandler),           // Uses ICommandHandler
+            new InteractiveStepHandler(taskService, taskRepo),
+            new DecisionStepHandler(queryHandler, conditionEvaluator), // Uses IQueryHandler
+            new ScheduledStepHandler(),
+            new SignalStepHandler(),
+            new SubProcessStepHandler(processDefRepo, processInstRepo)
+        };
+
+        // Engine
+        return new ProcessEngine(
+            processDefRepo,
+            processInstRepo,
+            stepInstRepo,
+            handlers);
+    }
+
+    /// <summary>
+    /// Creates engine with legacy pattern (deprecated)
+    /// Uses IWebServiceClient for backward compatibility
+    /// </summary>
+    [Obsolete("Use CreateEngine() instead which uses CQRS pattern")]
+    public static ProcessEngine CreateEngineLegacy(string connectionString)
+    {
+        // Repositories
+        var processDefRepo = new OracleProcessDefinitionRepository(connectionString);
+        var processInstRepo = new OracleProcessInstanceRepository(connectionString);
+        var stepInstRepo = new OracleStepInstanceRepository(connectionString);
+        var taskRepo = new OracleTaskRepository(connectionString);
+
+        // Services - legacy pattern
+        var httpClient = new HttpClient();
+#pragma warning disable CS0618 // Type or member is obsolete
         var webServiceClient = new HttpWebServiceClient(httpClient);
         var taskService = new CustomTaskService(taskRepo);
         var conditionEvaluator = new SimpleConditionEvaluator();
 
-        // Handlers
+        // Handlers - legacy pattern
         var handlers = new IStepHandler[]
         {
             new BusinessStepHandler(webServiceClient),
@@ -304,6 +520,7 @@ public class BpmEngineSetup
             new SignalStepHandler(),
             new SubProcessStepHandler(processDefRepo, processInstRepo)
         };
+#pragma warning restore CS0618 // Type or member is obsolete
 
         // Engine
         return new ProcessEngine(

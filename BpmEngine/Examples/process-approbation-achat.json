@@ -9,8 +9,7 @@
       "id": "valider-demande",
       "name": "Valider la demande",
       "type": 0,
-      "serviceUrl": "https://api.client.com/validation/demande",
-      "method": "POST",
+      "commandName": "ValidateOrderRequest",
       "parameters": {
         "typeValidation": "achat"
       },
@@ -20,8 +19,7 @@
       "id": "verifier-montant",
       "name": "Vérifier le montant",
       "type": 2,
-      "queryServiceUrl": "https://api.client.com/query/montant",
-      "method": "POST",
+      "queryName": "GetOrderAmount",
       "routes": [
         {
           "targetStepId": "approbation-directe",
@@ -39,8 +37,7 @@
       "id": "approbation-directe",
       "name": "Approbation automatique",
       "type": 0,
-      "serviceUrl": "https://api.client.com/approbation/automatique",
-      "method": "POST",
+      "commandName": "ApproveOrderAutomatically",
       "nextStepId": "notification-finale"
     },
     {
@@ -74,8 +71,7 @@
       "id": "notification-finale",
       "name": "Envoyer notification",
       "type": 0,
-      "serviceUrl": "https://api.client.com/notification/envoyer",
-      "method": "POST",
+      "commandName": "SendNotification",
       "nextStepId": null
     }
   ]

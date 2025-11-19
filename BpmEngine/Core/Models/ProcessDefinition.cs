@@ -20,9 +20,14 @@ public abstract class StepDefinition
 
 public class BusinessStepDefinition : StepDefinition
 {
-    public string ServiceUrl { get; set; } = string.Empty;
-    public string Method { get; set; } = "POST";
+    public string CommandName { get; set; } = string.Empty;
     public Dictionary<string, object>? Parameters { get; set; }
+
+    // Legacy properties - deprecated
+    [Obsolete("Use CommandName instead")]
+    public string ServiceUrl { get; set; } = string.Empty;
+    [Obsolete("No longer needed with CommandName")]
+    public string Method { get; set; } = "POST";
 }
 
 public class InteractiveStepDefinition : StepDefinition
@@ -34,10 +39,15 @@ public class InteractiveStepDefinition : StepDefinition
 
 public class DecisionStepDefinition : StepDefinition
 {
-    public string QueryServiceUrl { get; set; } = string.Empty;
-    public string Method { get; set; } = "POST";
+    public string QueryName { get; set; } = string.Empty;
     public Dictionary<string, object>? Parameters { get; set; }
     public List<DecisionRoute> Routes { get; set; } = new();
+
+    // Legacy properties - deprecated
+    [Obsolete("Use QueryName instead")]
+    public string QueryServiceUrl { get; set; } = string.Empty;
+    [Obsolete("No longer needed with QueryName")]
+    public string Method { get; set; } = "POST";
 }
 
 public class DecisionRoute
