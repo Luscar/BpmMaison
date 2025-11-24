@@ -13,7 +13,218 @@ using BpmEngine.Services.Impl;
 namespace ClientApp;
 
 // ----------------------------------------------------------------------------
-// 1. IMPLÉMENTATION DES REPOSITORIES (ORACLE)
+// 1a. IMPLÉMENTATION DES REPOSITORIES (JSON FILES - RECOMMENDED FOR PROCESS DEFINITIONS)
+// ----------------------------------------------------------------------------
+
+/// <summary>
+/// JSON file-based repository for process definitions.
+/// Stores each process definition as a JSON file with versioning support.
+/// File naming: {processId}_v{version}.json
+/// </summary>
+public class JsonFileProcessDefinitionRepository : IProcessDefinitionRepository
+{
+    private readonly string _directoryPath;
+
+    public JsonFileProcessDefinitionRepository(string directoryPath)
+    {
+        _directoryPath = directoryPath;
+
+        // Ensure directory exists
+        if (!Directory.Exists(_directoryPath))
+        {
+            Directory.CreateDirectory(_directoryPath);
+        }
+    }
+
+    public async Task<ProcessDefinition?> GetByIdAsync(string processId, int? version = null)
+    {
+        if (version.HasValue)
+        {
+            // Get specific version
+            var filePath = GetFilePath(processId, version.Value);
+            if (!File.Exists(filePath))
+                return null;
+
+            return await ReadProcessDefinitionAsync(filePath);
+        }
+        else
+        {
+            // Get latest version
+            var versions = await GetVersionsAsync(processId);
+            return versions.OrderByDescending(p => p.Version).FirstOrDefault();
+        }
+    }
+
+    public async Task<ProcessDefinition> SaveAsync(ProcessDefinition definition)
+    {
+        // If version is 0 or not set, auto-increment
+        if (definition.Version == 0)
+        {
+            var existingVersions = await GetVersionsAsync(definition.Id);
+            definition.Version = existingVersions.Any()
+                ? existingVersions.Max(p => p.Version) + 1
+                : 1;
+        }
+
+        var filePath = GetFilePath(definition.Id, definition.Version);
+
+        // Serialize with proper options
+        var options = new System.Text.Json.JsonSerializerOptions
+        {
+            WriteIndented = true,
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(definition, options);
+        await File.WriteAllTextAsync(filePath, json);
+
+        return definition;
+    }
+
+    public async Task<List<ProcessDefinition>> GetAllAsync()
+    {
+        var allFiles = Directory.GetFiles(_directoryPath, "*_v*.json");
+        var allDefinitions = new List<ProcessDefinition>();
+
+        foreach (var filePath in allFiles)
+        {
+            var definition = await ReadProcessDefinitionAsync(filePath);
+            if (definition != null)
+                allDefinitions.Add(definition);
+        }
+
+        // Group by process ID and return only latest versions
+        return allDefinitions
+            .GroupBy(p => p.Id)
+            .Select(g => g.OrderByDescending(p => p.Version).First())
+            .OrderBy(p => p.Name)
+            .ToList();
+    }
+
+    public async Task<List<ProcessDefinition>> GetVersionsAsync(string processId)
+    {
+        var pattern = $"{SanitizeFileName(processId)}_v*.json";
+        var files = Directory.GetFiles(_directoryPath, pattern);
+        var versions = new List<ProcessDefinition>();
+
+        foreach (var filePath in files)
+        {
+            var definition = await ReadProcessDefinitionAsync(filePath);
+            if (definition != null)
+                versions.Add(definition);
+        }
+
+        return versions.OrderBy(p => p.Version).ToList();
+    }
+
+    private async Task<ProcessDefinition?> ReadProcessDefinitionAsync(string filePath)
+    {
+        try
+        {
+            var json = await File.ReadAllTextAsync(filePath);
+
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                Converters =
+                {
+                    new ProcessDefinitionJsonConverter()
+                }
+            };
+
+            return System.Text.Json.JsonSerializer.Deserialize<ProcessDefinition>(json, options);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error reading process definition from {filePath}: {ex.Message}");
+            return null;
+        }
+    }
+
+    private string GetFilePath(string processId, int version)
+    {
+        var fileName = $"{SanitizeFileName(processId)}_v{version}.json";
+        return Path.Combine(_directoryPath, fileName);
+    }
+
+    private string SanitizeFileName(string fileName)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        return string.Join("_", fileName.Split(invalid, StringSplitOptions.RemoveEmptyEntries));
+    }
+}
+
+/// <summary>
+/// Custom JSON converter to handle polymorphic step definitions
+/// </summary>
+public class ProcessDefinitionJsonConverter : System.Text.Json.Serialization.JsonConverter<ProcessDefinition>
+{
+    public override ProcessDefinition Read(
+        ref System.Text.Json.Utf8JsonReader reader,
+        Type typeToConvert,
+        System.Text.Json.JsonSerializerOptions options)
+    {
+        using var doc = System.Text.Json.JsonDocument.ParseValue(ref reader);
+        var root = doc.RootElement;
+
+        var definition = new ProcessDefinition
+        {
+            Id = root.GetProperty("id").GetString() ?? string.Empty,
+            Name = root.GetProperty("name").GetString() ?? string.Empty,
+            Description = root.TryGetProperty("description", out var desc) ? desc.GetString() ?? string.Empty : string.Empty,
+            Version = root.TryGetProperty("version", out var ver) ? ver.GetInt32() : 1,
+            StartStepId = root.GetProperty("startStepId").GetString() ?? string.Empty
+        };
+
+        if (root.TryGetProperty("steps", out var stepsElement))
+        {
+            foreach (var stepElement in stepsElement.EnumerateArray())
+            {
+                var step = DeserializeStep(stepElement, options);
+                if (step != null)
+                    definition.Steps.Add(step);
+            }
+        }
+
+        return definition;
+    }
+
+    private StepDefinition? DeserializeStep(
+        System.Text.Json.JsonElement stepElement,
+        System.Text.Json.JsonSerializerOptions options)
+    {
+        if (!stepElement.TryGetProperty("type", out var typeElement))
+            return null;
+
+        var typeString = typeElement.GetString();
+        var stepType = Enum.Parse<StepType>(typeString ?? "Business");
+
+        StepDefinition? step = stepType switch
+        {
+            StepType.Business => System.Text.Json.JsonSerializer.Deserialize<BusinessStepDefinition>(stepElement.GetRawText(), options),
+            StepType.Interactive => System.Text.Json.JsonSerializer.Deserialize<InteractiveStepDefinition>(stepElement.GetRawText(), options),
+            StepType.Decision => System.Text.Json.JsonSerializer.Deserialize<DecisionStepDefinition>(stepElement.GetRawText(), options),
+            StepType.Scheduled => System.Text.Json.JsonSerializer.Deserialize<ScheduledStepDefinition>(stepElement.GetRawText(), options),
+            StepType.Signal => System.Text.Json.JsonSerializer.Deserialize<SignalStepDefinition>(stepElement.GetRawText(), options),
+            StepType.SubProcess => System.Text.Json.JsonSerializer.Deserialize<SubProcessStepDefinition>(stepElement.GetRawText(), options),
+            _ => null
+        };
+
+        return step;
+    }
+
+    public override void Write(
+        System.Text.Json.Utf8JsonWriter writer,
+        ProcessDefinition value,
+        System.Text.Json.JsonSerializerOptions options)
+    {
+        System.Text.Json.JsonSerializer.Serialize(writer, value, options);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 1b. IMPLÉMENTATION DES REPOSITORIES (ORACLE - FOR RUNTIME DATA)
 // ----------------------------------------------------------------------------
 
 public class OracleProcessDefinitionRepository : IProcessDefinitionRepository
@@ -453,7 +664,49 @@ public class CustomTaskService : ITaskService
 public class BpmEngineSetup
 {
     /// <summary>
-    /// Creates engine with CQRS pattern (recommended)
+    /// Creates engine with JSON file-based process definitions (RECOMMENDED)
+    /// Process definitions stored as JSON files, runtime data in database
+    /// </summary>
+    public static ProcessEngine CreateEngineWithJsonDefinitions(
+        string processDefinitionsPath,
+        string connectionString)
+    {
+        // Repositories
+        // - Process definitions: JSON files (easy to edit, version control friendly)
+        // - Runtime data: Database (transactions, performance, querying)
+        var processDefRepo = new JsonFileProcessDefinitionRepository(processDefinitionsPath);
+        var processInstRepo = new OracleProcessInstanceRepository(connectionString);
+        var stepInstRepo = new OracleStepInstanceRepository(connectionString);
+        var taskRepo = new OracleTaskRepository(connectionString);
+
+        // Services - CQRS pattern
+        var httpClient = new HttpClient();
+        var commandHandler = new ApplicationCommandHandler(httpClient);
+        var queryHandler = new ApplicationQueryHandler(httpClient);
+        var taskService = new CustomTaskService(taskRepo);
+        var conditionEvaluator = new SimpleConditionEvaluator();
+
+        // Handlers - using CQRS pattern
+        var handlers = new IStepHandler[]
+        {
+            new BusinessStepHandler(commandHandler),
+            new InteractiveStepHandler(taskService, taskRepo),
+            new DecisionStepHandler(queryHandler, conditionEvaluator),
+            new ScheduledStepHandler(),
+            new SignalStepHandler(),
+            new SubProcessStepHandler(processDefRepo, processInstRepo)
+        };
+
+        // Engine
+        return new ProcessEngine(
+            processDefRepo,
+            processInstRepo,
+            stepInstRepo,
+            handlers);
+    }
+
+    /// <summary>
+    /// Creates engine with database-based process definitions
     /// Uses ICommandHandler and IQueryHandler for business and decision steps
     /// </summary>
     public static ProcessEngine CreateEngine(string connectionString)
@@ -539,10 +792,32 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        var connectionString = "Data Source=oracle-server;User Id=bpm_user;Password=xxx;";
-        var engine = BpmEngineSetup.CreateEngine(connectionString);
+        // ========================================================================
+        // EXAMPLE 1: Using JSON file repository for process definitions (RECOMMENDED)
+        // ========================================================================
 
-        // Démarrer un processus
+        var processDefinitionsPath = "./ProcessDefinitions";
+        var connectionString = "Data Source=oracle-server;User Id=bpm_user;Password=xxx;";
+
+        var engine = BpmEngineSetup.CreateEngineWithJsonDefinitions(
+            processDefinitionsPath,
+            connectionString);
+
+        // Load process definition from JSON file
+        var processDefRepo = new JsonFileProcessDefinitionRepository(processDefinitionsPath);
+
+        // Get latest version of a process
+        var processDef = await processDefRepo.GetByIdAsync("approbation-achat");
+        Console.WriteLine($"Process: {processDef?.Name}, Version: {processDef?.Version}");
+
+        // Get specific version
+        var processDefV1 = await processDefRepo.GetByIdAsync("approbation-achat", 1);
+
+        // Get all versions of a process
+        var allVersions = await processDefRepo.GetVersionsAsync("approbation-achat");
+        Console.WriteLine($"Found {allVersions.Count} versions");
+
+        // Start a process instance
         var variables = new Dictionary<string, object>
         {
             ["montant"] = 1500,
@@ -550,17 +825,54 @@ public class Program
             ["produitId"] = "P98765"
         };
 
-        var instanceId = await engine.StartProcessAsync(
-            "approbation-achat",
-            variables);
-
+        var instanceId = await engine.StartProcessAsync("approbation-achat", variables);
         Console.WriteLine($"Processus démarré: {instanceId}");
+
+        // ========================================================================
+        // EXAMPLE 2: Creating and saving a new process definition
+        // ========================================================================
+
+        var newProcess = new ProcessDefinition
+        {
+            Id = "new-process",
+            Name = "Nouveau Processus",
+            Description = "Description du processus",
+            StartStepId = "step1",
+            Steps = new List<StepDefinition>
+            {
+                new BusinessStepDefinition
+                {
+                    Id = "step1",
+                    Name = "Première étape",
+                    Type = StepType.Business,
+                    CommandName = "ExecuteFirstStep",
+                    NextStepId = null
+                }
+            }
+        };
+
+        // Save as version 1 (auto-incremented if version = 0)
+        await processDefRepo.SaveAsync(newProcess);
+        Console.WriteLine($"Process saved: {newProcess.Id} v{newProcess.Version}");
+
+        // ========================================================================
+        // EXAMPLE 3: Scheduled steps and signals
+        // ========================================================================
 
         // Job de traitement des étapes cédulées (à exécuter périodiquement)
         // await engine.ProcessScheduledStepsAsync();
 
         // Envoyer un signal
         // await engine.SendSignalAsync("produit-disponible", instanceId);
+
+        // ========================================================================
+        // FILE STRUCTURE EXAMPLE:
+        // ========================================================================
+        // ./ProcessDefinitions/
+        //   ├── approbation-achat_v1.json
+        //   ├── approbation-achat_v2.json
+        //   ├── gestion-commande-complexe_v1.json
+        //   └── commande-complete_v1.json
     }
 }
 
