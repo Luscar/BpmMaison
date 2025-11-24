@@ -8,7 +8,7 @@
     {
       "id": "recevoir-commande",
       "name": "Réception de la Commande",
-      "type": 0,
+      "type": "Business",
       "commandName": "ReceiveOrder",
       "parameters": {
         "source": "web"
@@ -18,7 +18,7 @@
     {
       "id": "valider-inventaire",
       "name": "Vérifier Disponibilité Produits",
-      "type": 2,
+      "type": "Decision",
       "queryName": "CheckInventoryAvailability",
       "routes": [
         {
@@ -41,14 +41,14 @@
     {
       "id": "produits-disponibles",
       "name": "Calculer Prix et Taxes",
-      "type": 0,
+      "type": "Business",
       "commandName": "CalculatePriceAndTaxes",
       "nextStepId": "verifier-montant"
     },
     {
       "id": "disponibilite-partielle",
       "name": "Contacter Client - Partiel",
-      "type": 1,
+      "type": "Interactive",
       "taskType": "contact-client",
       "defaultRole": "service-client",
       "taskData": {
@@ -60,7 +60,7 @@
     {
       "id": "attendre-reponse-client",
       "name": "Attente Réponse (48h)",
-      "type": 4,
+      "type": "Signal",
       "signalName": "reponse-client",
       "timeoutMinutes": 2880,
       "nextStepId": "traiter-reponse"
@@ -68,7 +68,7 @@
     {
       "id": "traiter-reponse",
       "name": "Traiter Décision Client",
-      "type": 2,
+      "type": "Decision",
       "queryName": "GetClientDecision",
       "routes": [
         {
@@ -91,7 +91,7 @@
     {
       "id": "attendre-disponibilite",
       "name": "Attendre Réapprovisionnement",
-      "type": 4,
+      "type": "Signal",
       "signalName": "produits-disponibles",
       "timeoutMinutes": 10080,
       "nextStepId": "produits-disponibles"
@@ -99,14 +99,14 @@
     {
       "id": "produits-indisponibles",
       "name": "Notifier Client - Indisponible",
-      "type": 0,
+      "type": "Business",
       "commandName": "NotifyProductUnavailable",
       "nextStepId": "annuler-commande"
     },
     {
       "id": "verifier-montant",
       "name": "Vérification du Montant",
-      "type": 2,
+      "type": "Decision",
       "queryName": "GetOrderAmountCategory",
       "routes": [
         {
@@ -129,14 +129,14 @@
     {
       "id": "traiter-directement",
       "name": "Traitement Automatique",
-      "type": 0,
+      "type": "Business",
       "commandName": "AutoApproveOrder",
       "nextStepId": "verifier-client"
     },
     {
       "id": "approbation-superviseur",
       "name": "Approbation Superviseur",
-      "type": 1,
+      "type": "Interactive",
       "taskType": "approbation",
       "defaultRole": "superviseur",
       "taskData": {
@@ -148,7 +148,7 @@
     {
       "id": "approbation-directeur",
       "name": "Approbation Directeur",
-      "type": 1,
+      "type": "Interactive",
       "taskType": "approbation",
       "defaultRole": "directeur",
       "taskData": {
@@ -160,7 +160,7 @@
     {
       "id": "validation-finance",
       "name": "Validation Département Finance",
-      "type": 1,
+      "type": "Interactive",
       "taskType": "validation-finance",
       "defaultRole": "finance",
       "taskData": {
@@ -172,7 +172,7 @@
     {
       "id": "verifier-client",
       "name": "Vérification Crédit Client",
-      "type": 2,
+      "type": "Decision",
       "queryName": "CheckClientCredit",
       "routes": [
         {
@@ -190,14 +190,14 @@
     {
       "id": "demander-paiement-avance",
       "name": "Demander Paiement Anticipé",
-      "type": 0,
+      "type": "Business",
       "commandName": "RequestAdvancePayment",
       "nextStepId": "attendre-paiement-avance"
     },
     {
       "id": "attendre-paiement-avance",
       "name": "Attente Paiement (7 jours)",
-      "type": 4,
+      "type": "Signal",
       "signalName": "paiement-recu",
       "timeoutMinutes": 10080,
       "nextStepId": "processus-paiement"
@@ -205,7 +205,7 @@
     {
       "id": "processus-paiement",
       "name": "Traitement du Paiement",
-      "type": 5,
+      "type": "SubProcess",
       "subProcessId": "paiement-securise",
       "subProcessVersion": 1,
       "inputMapping": {
@@ -223,7 +223,7 @@
     {
       "id": "verifier-paiement",
       "name": "Vérifier Statut Paiement",
-      "type": 2,
+      "type": "Decision",
       "queryName": "GetPaymentStatus",
       "routes": [
         {
@@ -246,14 +246,14 @@
     {
       "id": "attendre-paiement-pending",
       "name": "Attendre Confirmation Paiement",
-      "type": 3,
+      "type": "Scheduled",
       "delayHours": 2,
       "nextStepId": "verifier-paiement"
     },
     {
       "id": "gestion-paiement-echoue",
       "name": "Gérer Échec de Paiement",
-      "type": 1,
+      "type": "Interactive",
       "taskType": "gestion-echec",
       "defaultRole": "comptabilite",
       "taskData": {
@@ -265,14 +265,14 @@
     {
       "id": "preparer-commande",
       "name": "Préparation Commande Entrepôt",
-      "type": 0,
+      "type": "Business",
       "commandName": "PrepareWarehouseOrder",
       "nextStepId": "assigner-preparation"
     },
     {
       "id": "assigner-preparation",
       "name": "Assigner Préparateur",
-      "type": 1,
+      "type": "Interactive",
       "taskType": "preparation-commande",
       "defaultRole": "preparateur",
       "taskData": {
@@ -284,7 +284,7 @@
     {
       "id": "attendre-preparation",
       "name": "Attendre Fin Préparation",
-      "type": 4,
+      "type": "Signal",
       "signalName": "preparation-terminee",
       "timeoutMinutes": 1440,
       "nextStepId": "controler-qualite"
@@ -292,7 +292,7 @@
     {
       "id": "controler-qualite",
       "name": "Contrôle Qualité",
-      "type": 1,
+      "type": "Interactive",
       "taskType": "controle-qualite",
       "defaultRole": "controleur-qualite",
       "taskData": {
@@ -304,7 +304,7 @@
     {
       "id": "verifier-qualite",
       "name": "Vérifier Résultat Qualité",
-      "type": 2,
+      "type": "Decision",
       "queryName": "GetQualityCheckResult",
       "routes": [
         {
@@ -327,21 +327,21 @@
     {
       "id": "repreparation",
       "name": "Repréparation Requise",
-      "type": 0,
+      "type": "Business",
       "commandName": "RequestRepreparation",
       "nextStepId": "assigner-preparation"
     },
     {
       "id": "planifier-livraison",
       "name": "Planification Livraison",
-      "type": 0,
+      "type": "Business",
       "commandName": "PlanDelivery",
       "nextStepId": "verifier-mode-livraison"
     },
     {
       "id": "verifier-mode-livraison",
       "name": "Déterminer Mode Livraison",
-      "type": 2,
+      "type": "Decision",
       "queryName": "GetDeliveryMode",
       "routes": [
         {
@@ -364,7 +364,7 @@
     {
       "id": "livraison-express",
       "name": "Traitement Livraison Express",
-      "type": 5,
+      "type": "SubProcess",
       "subProcessId": "livraison-express-process",
       "subProcessVersion": 1,
       "inputMapping": {
@@ -379,49 +379,49 @@
     {
       "id": "livraison-standard",
       "name": "Traitement Livraison Standard",
-      "type": 0,
+      "type": "Business",
       "commandName": "OrganizeStandardDelivery",
       "nextStepId": "attendre-ramassage"
     },
     {
       "id": "attendre-ramassage",
       "name": "Attendre Ramassage Transporteur",
-      "type": 3,
+      "type": "Scheduled",
       "delayHours": 24,
       "nextStepId": "confirmer-expedition"
     },
     {
       "id": "livraison-economique",
       "name": "Traitement Livraison Économique",
-      "type": 0,
+      "type": "Business",
       "commandName": "OrganizeEconomicDelivery",
       "nextStepId": "attendre-consolidation"
     },
     {
       "id": "attendre-consolidation",
       "name": "Attendre Consolidation Envois",
-      "type": 3,
+      "type": "Scheduled",
       "delayDays": 3,
       "nextStepId": "confirmer-expedition"
     },
     {
       "id": "confirmer-expedition",
       "name": "Confirmer Expédition",
-      "type": 0,
+      "type": "Business",
       "commandName": "ConfirmShipment",
       "nextStepId": "notifier-client-expedition"
     },
     {
       "id": "notifier-client-expedition",
       "name": "Notifier Client de l'Expédition",
-      "type": 0,
+      "type": "Business",
       "commandName": "NotifyClientShipment",
       "nextStepId": "attendre-livraison"
     },
     {
       "id": "attendre-livraison",
       "name": "Attendre Confirmation Livraison",
-      "type": 4,
+      "type": "Signal",
       "signalName": "livraison-confirmee",
       "timeoutMinutes": 20160,
       "nextStepId": "verifier-livraison"
@@ -429,7 +429,7 @@
     {
       "id": "verifier-livraison",
       "name": "Vérifier Statut Livraison",
-      "type": 2,
+      "type": "Decision",
       "queryName": "GetDeliveryStatus",
       "routes": [
         {
@@ -452,7 +452,7 @@
     {
       "id": "gerer-probleme-livraison",
       "name": "Gérer Problème de Livraison",
-      "type": 1,
+      "type": "Interactive",
       "taskType": "probleme-livraison",
       "defaultRole": "service-client",
       "taskData": {
@@ -464,7 +464,7 @@
     {
       "id": "attendre-resolution",
       "name": "Attendre Résolution",
-      "type": 4,
+      "type": "Signal",
       "signalName": "probleme-resolu",
       "timeoutMinutes": 4320,
       "nextStepId": "cloturer-commande"
@@ -472,42 +472,42 @@
     {
       "id": "cloturer-commande",
       "name": "Clôturer la Commande",
-      "type": 0,
+      "type": "Business",
       "commandName": "CloseOrder",
       "nextStepId": "envoyer-sondage"
     },
     {
       "id": "envoyer-sondage",
       "name": "Envoyer Sondage Satisfaction",
-      "type": 0,
+      "type": "Business",
       "commandName": "SendSatisfactionSurvey",
       "nextStepId": "attendre-sondage"
     },
     {
       "id": "attendre-sondage",
       "name": "Attendre Réponse Sondage (7j)",
-      "type": 3,
+      "type": "Scheduled",
       "delayDays": 7,
       "nextStepId": "archiver-commande"
     },
     {
       "id": "archiver-commande",
       "name": "Archiver la Commande",
-      "type": 0,
+      "type": "Business",
       "commandName": "ArchiveOrder",
       "nextStepId": null
     },
     {
       "id": "annuler-commande",
       "name": "Annulation de la Commande",
-      "type": 0,
+      "type": "Business",
       "commandName": "CancelOrder",
       "nextStepId": "notifier-annulation"
     },
     {
       "id": "notifier-annulation",
       "name": "Notifier Client Annulation",
-      "type": 0,
+      "type": "Business",
       "commandName": "NotifyCancellation",
       "nextStepId": "archiver-commande"
     }

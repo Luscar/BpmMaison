@@ -1,5 +1,8 @@
+using System.Text.Json.Serialization;
+
 namespace BpmEngine.Core;
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum StepType
 {
     Business,
@@ -10,6 +13,7 @@ public enum StepType
     SubProcess
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ProcessStatus
 {
     NotStarted,
@@ -20,6 +24,7 @@ public enum ProcessStatus
     Cancelled
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum StepStatus
 {
     NotStarted,

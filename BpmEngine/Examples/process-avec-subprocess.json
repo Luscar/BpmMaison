@@ -8,14 +8,14 @@
     {
       "id": "creer-commande",
       "name": "Créer la commande",
-      "type": 0,
+      "type": "Business",
       "commandName": "CreateOrder",
       "nextStepId": "processus-paiement"
     },
     {
       "id": "processus-paiement",
       "name": "Traiter le paiement",
-      "type": 5,
+      "type": "SubProcess",
       "subProcessId": "paiement-securise",
       "subProcessVersion": 1,
       "inputMapping": {
@@ -31,7 +31,7 @@
     {
       "id": "confirmer-commande",
       "name": "Confirmer la commande",
-      "type": 0,
+      "type": "Business",
       "commandName": "ConfirmOrder",
       "nextStepId": null
     }
