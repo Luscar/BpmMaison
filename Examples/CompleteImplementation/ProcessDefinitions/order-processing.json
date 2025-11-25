@@ -1,0 +1,102 @@
+{
+  "id": "ORDER_PROCESSING",
+  "name": "Order Processing",
+  "description": "Main process for handling customer orders with inventory check and approval",
+  "version": 1,
+  "startStepId": "validate_order",
+  "steps": [
+    {
+      "id": "validate_order",
+      "name": "Validate Order",
+      "type": 0,
+      "commandName": "ValidateOrder",
+      "parameters": {
+        "orderId": "{{orderId}}",
+        "customerId": "{{customerId}}"
+      },
+      "nextStepId": "check_inventory"
+    },
+    {
+      "id": "check_inventory",
+      "name": "Check Inventory Availability",
+      "type": 2,
+      "queryName": "CheckInventory",
+      "parameters": {
+        "productId": "{{productId}}",
+        "quantity": "{{quantity}}"
+      },
+      "routes": [
+        {
+          "condition": "isAvailable == true && quantity <= stockLevel",
+          "nextStepId": "manager_approval_subprocess"
+        },
+        {
+          "condition": "isAvailable == false || quantity > stockLevel",
+          "nextStepId": "reject_order"
+        }
+      ],
+      "nextStepId": "reject_order"
+    },
+    {
+      "id": "manager_approval_subprocess",
+      "name": "Manager Approval Process",
+      "type": 5,
+      "subProcessId": "MANAGER_APPROVAL",
+      "subProcessVersion": 1,
+      "inputMapping": {
+        "orderId": "orderId",
+        "orderAmount": "totalAmount",
+        "customerName": "customerName"
+      },
+      "outputMapping": {
+        "approvalStatus": "approvalStatus",
+        "approvedBy": "approvedBy",
+        "approvalComments": "comments"
+      },
+      "nextStepId": "check_approval_result"
+    },
+    {
+      "id": "check_approval_result",
+      "name": "Check Approval Result",
+      "type": 2,
+      "queryName": "CheckApprovalStatus",
+      "parameters": {
+        "approvalStatus": "{{approvalStatus}}"
+      },
+      "routes": [
+        {
+          "condition": "approvalStatus == 'APPROVED'",
+          "nextStepId": "finalize_order"
+        },
+        {
+          "condition": "approvalStatus == 'REJECTED'",
+          "nextStepId": "reject_order"
+        }
+      ],
+      "nextStepId": "reject_order"
+    },
+    {
+      "id": "finalize_order",
+      "name": "Finalize Order",
+      "type": 0,
+      "commandName": "FinalizeOrder",
+      "parameters": {
+        "orderId": "{{orderId}}",
+        "approvalStatus": "{{approvalStatus}}",
+        "approvedBy": "{{approvedBy}}"
+      },
+      "nextStepId": null
+    },
+    {
+      "id": "reject_order",
+      "name": "Reject Order",
+      "type": 0,
+      "commandName": "RejectOrder",
+      "parameters": {
+        "orderId": "{{orderId}}",
+        "reason": "{{rejectionReason}}"
+      },
+      "nextStepId": null
+    }
+  ]
+}

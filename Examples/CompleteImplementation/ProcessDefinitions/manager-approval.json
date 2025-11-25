@@ -1,0 +1,36 @@
+{
+  "id": "MANAGER_APPROVAL",
+  "name": "Manager Approval",
+  "description": "Subprocess for manager approval of orders",
+  "version": 1,
+  "startStepId": "create_approval_task",
+  "steps": [
+    {
+      "id": "create_approval_task",
+      "name": "Create Approval Task",
+      "type": 1,
+      "taskType": "ORDER_APPROVAL",
+      "defaultRole": "Manager",
+      "taskData": {
+        "orderId": "{{orderId}}",
+        "orderAmount": "{{orderAmount}}",
+        "customerName": "{{customerName}}",
+        "instructions": "Please review and approve/reject this order"
+      },
+      "nextStepId": "record_approval"
+    },
+    {
+      "id": "record_approval",
+      "name": "Record Approval Decision",
+      "type": 0,
+      "commandName": "RecordApproval",
+      "parameters": {
+        "orderId": "{{orderId}}",
+        "approvalStatus": "{{approvalStatus}}",
+        "approvedBy": "{{approvedBy}}",
+        "comments": "{{comments}}"
+      },
+      "nextStepId": null
+    }
+  ]
+}
